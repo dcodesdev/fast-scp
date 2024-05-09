@@ -1,4 +1,5 @@
 use clap::{command, Parser, Subcommand};
+use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -20,6 +21,6 @@ pub enum Commands {
         username: String,
 
         #[arg(short, long)]
-        private_key_path: Option<String>,
+        private_key_path: Option<PathBuf>,
     },
 }

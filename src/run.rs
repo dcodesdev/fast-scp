@@ -1,5 +1,5 @@
 use crate::cli::{Cli, Commands};
-use crate::scp::ReceiveFile;
+use crate::scp::{Receiver, SshOpts};
 use clap::Parser;
 use dirs_next::home_dir;
 use std::path::PathBuf;
@@ -25,11 +25,15 @@ pub async fn run() -> anyhow::Result<()> {
                     .join(".ssh/id_rsa"),
             };
 
-            return ReceiveFile::new(host, PathBuf::from(source))
+            let scp_opts = SshOpts {
+                host: format!("{}:22", host),
+                private_key,
+                username,
+            };
+
+            return Receiver::new(scp_opts)?
                 .dir(PathBuf::from(destination))
-                .username(username)
-                .private_key(private_key)
-                .receive();
+                .receive(&PathBuf::from(source));
         }
     }
 }
