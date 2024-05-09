@@ -7,8 +7,5 @@ edition = "2021"
 ssh2 = "0.9.4"
 tokio = { version = "1.37.0", features = ["full"] }
 anyhow = "1.0.83"
-dotenvy = "0.15.7"
 clap = { version = "4.5.4", features = ["derive"] }
-console = "0.15.8"
-indicatif = "0.17.8"
 dirs-next = "2.0.0"
