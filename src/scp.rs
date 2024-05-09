@@ -1,19 +1,21 @@
 use anyhow::Ok;
 use ssh2::Session;
 use std::{
-    fs,
-    fs::File,
+    fs::{self, File},
     io::{Read, Write},
     net::TcpStream,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
-pub fn create_session(host: &str) -> anyhow::Result<Session> {
+pub fn create_session(host: &str, username: &str, private_key: &Path) -> anyhow::Result<Session> {
     // Connect to the host
     let tcp = TcpStream::connect(host)?;
     let mut session = Session::new()?;
     session.set_tcp_stream(tcp);
     session.handshake()?;
+
+    // Authenticate using a private key
+    session.userauth_pubkey_file(username, None, &private_key, None)?;
 
     Ok(session)
 }
@@ -65,17 +67,14 @@ impl ReceiveFile {
     }
 }
 
-pub fn copy_file_from_vps(
+fn copy_file_from_vps(
     host: &str,
     username: &str,
     remote_file_path: &PathBuf,
     local_file_path: &PathBuf,
     private_key_path: &PathBuf,
 ) -> anyhow::Result<()> {
-    let session = create_session(host)?;
-
-    // Authenticate using a private key
-    session.userauth_pubkey_file(username, None, &private_key_path, None)?;
+    let session = create_session(host, username, &private_key_path)?;
 
     // Create a SCP channel for receiving the file
     let (mut remote_file, stat) = session.scp_recv(&remote_file_path)?;
@@ -90,4 +89,18 @@ pub fn copy_file_from_vps(
     local_file.write_all(&contents)?;
 
     Ok(())
+}
+
+fn list_dir(
+    host: &str,
+    username: &str,
+    dir: &Path,
+    private_key: &Path,
+) -> anyhow::Result<Vec<PathBuf>> {
+    let session = create_session(host, username, private_key)?;
+
+    let sftp = session.sftp()?;
+    let dir = sftp.readdir(dir)?;
+    let dirs = dir.iter().map(|entry| entry.0.to_owned()).collect();
+    Ok(dirs)
 }
