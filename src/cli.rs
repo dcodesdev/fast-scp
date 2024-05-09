@@ -9,11 +9,17 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    Copy {
+    Receive {
+        source: String,
+        destination: String,
+
         #[arg(short, long)]
         host: String,
 
         #[arg(short, long)]
         username: String,
+
+        #[arg(short, long, default_value = "~/.ssh/id_rsa")]
+        private_key_path: String,
     },
 }

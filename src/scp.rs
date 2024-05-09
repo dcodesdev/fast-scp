@@ -9,9 +9,9 @@ use std::{
 pub fn copy_file_from_vps(
     host: &str,
     username: &str,
-    private_key_path: &str,
     remote_file_path: &str,
     local_file_path: &str,
+    private_key_path: &str,
 ) -> anyhow::Result<()> {
     // Connect to the host
     let tcp = TcpStream::connect(host)?;
