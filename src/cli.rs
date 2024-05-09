@@ -13,13 +13,13 @@ pub enum Commands {
         source: String,
         destination: String,
 
-        #[arg(short, long)]
+        #[arg(long)]
         host: String,
 
         #[arg(short, long)]
         username: String,
 
-        #[arg(short, long, default_value = "~/.ssh/id_rsa")]
-        private_key_path: String,
+        #[arg(short, long)]
+        private_key_path: Option<String>,
     },
 }
