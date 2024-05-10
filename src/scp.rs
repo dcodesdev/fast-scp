@@ -1,3 +1,4 @@
+use futures::future::join_all;
 use indicatif::ProgressBar;
 use ssh2::Session;
 use std::{
@@ -40,13 +41,14 @@ impl Connect {
             handles.push(handle);
         }
 
-        for handle in handles {
-            handle.await??;
+        let items = join_all(handles).await;
+
+        if items.iter().all(|x| x.is_ok()) {
+            println!("Done in {:.2?}", start.elapsed());
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("One or more files failed to copy"))
         }
-
-        println!("Done in {:.2?}", start.elapsed());
-
-        Ok(())
     }
 
     fn list(&self, dir: &PathBuf) -> anyhow::Result<Vec<PathBuf>> {
