@@ -20,18 +20,36 @@ impl Connect {
         Ok(Self { sftp, session })
     }
 
-    pub fn receive(&self, from: &PathBuf, to: &PathBuf) -> anyhow::Result<()> {
-        let is_dir = self.sftp.stat(&from)?.is_dir();
+    pub async fn receive(&self, from: &PathBuf, to: &PathBuf) -> anyhow::Result<()> {
+        let start = std::time::Instant::now();
+        let is_dir = self.sftp.stat(from)?.is_dir();
+        let end = start.elapsed();
+        println!("Time to stat: {:?}", end);
 
         if is_dir {
-            let items = self.recursive_list(&from)?;
+            let start = std::time::Instant::now();
+            let items = self.recursive_list(from)?;
+            let end = start.elapsed();
+            println!("Time to list: {:?}", end);
+
+            let mut handles = Vec::new();
             for item in items.iter() {
-                let to = &to.join(item.strip_prefix(&from).unwrap());
-                copy_file_from_remote(&self.session, item, to)?;
+                let to_path = to.join(item.strip_prefix(from).unwrap());
+                let session_clone = self.session.clone();
+                let item_clone = item.clone();
+                let handle = tokio::task::spawn(async move {
+                    copy_file_from_remote(&session_clone, &item_clone, &to_path)
+                });
+
+                handles.push(handle);
+            }
+
+            for handle in handles {
+                handle.await??;
             }
         } else {
-            let to = &to.join(from.file_name().unwrap());
-            copy_file_from_remote(&self.session, from, to)?;
+            let to_path = to.join(from.file_name().unwrap());
+            copy_file_from_remote(&self.session, from, &to_path)?;
         }
 
         Ok(())

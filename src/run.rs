@@ -32,7 +32,8 @@ pub async fn run() -> anyhow::Result<()> {
             };
 
             return Connect::new(scp_opts)?
-                .receive(&PathBuf::from(source), &PathBuf::from(destination));
+                .receive(&PathBuf::from(source), &PathBuf::from(destination))
+                .await;
         }
     }
 }
