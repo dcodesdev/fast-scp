@@ -9,6 +9,7 @@ use std::{
 
 pub struct Connect {
     sftp: Sftp,
+    session: Session,
 }
 
 impl Connect {
@@ -16,24 +17,24 @@ impl Connect {
         let session = create_session(&ssh_opts)?;
         let sftp = session.sftp()?;
 
-        Ok(Self { sftp })
+        Ok(Self { sftp, session })
     }
 
     pub fn receive(&self, from: &PathBuf, to: &PathBuf) -> anyhow::Result<()> {
-        let items = self.recursive_list(&from)?;
+        let is_dir = self.sftp.stat(&from)?.is_dir();
 
-        println!("Items: {:?}", items);
+        if is_dir {
+            let items = self.recursive_list(&from)?;
+            for item in items.iter() {
+                let to = &to.join(item.strip_prefix(&from).unwrap());
+                copy_file_from_remote(&self.session, item, to)?;
+            }
+        } else {
+            let to = &to.join(from.file_name().unwrap());
+            copy_file_from_remote(&self.session, from, to)?;
+        }
+
         Ok(())
-
-        // if self.is_dir(from)? {
-        //     let dirs = self.get_dir_paths_remote(from);
-        //     for dir in dirs? {
-        //         self.receive(&dir, &to.join(dir.file_name().unwrap()))?;
-        //     }
-        //     Ok(())
-        // } else {
-        //     copy_file_from_vps(&self.session, from, &to.join(from.file_name().unwrap()))
-        // }
     }
 
     fn list(&self, dir: &PathBuf) -> anyhow::Result<Vec<(PathBuf, FileStat)>> {
