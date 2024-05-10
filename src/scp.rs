@@ -1,4 +1,5 @@
 use anyhow::Ok;
+use indicatif::ProgressBar;
 use ssh2::Session;
 use std::{
     fs::{self, File},
@@ -9,32 +10,36 @@ use std::{
 
 pub struct Connect {
     session: Session,
+    ssh_opts: SshOpts,
 }
 
 impl Connect {
     pub fn new(ssh_opts: SshOpts) -> anyhow::Result<Self> {
         let session = create_session(&ssh_opts)?;
 
-        Ok(Self { session })
+        Ok(Self { session, ssh_opts })
     }
 
     pub async fn receive(&self, from: &PathBuf, to: &PathBuf) -> anyhow::Result<()> {
         let files = self.list(from)?;
 
+        let pb = ProgressBar::new(files.len() as u64);
+
         let mut handles = Vec::new();
         for item in files {
             let to_path = to.join(item.strip_prefix(from).unwrap());
-            let session_clone = self.session.clone();
             let item_clone = item.clone();
+            let ssh_opts = self.ssh_opts.clone();
             let handle = tokio::task::spawn(async move {
-                copy_file_from_remote(session_clone, item_clone.clone(), to_path).await
+                copy_file_from_remote(&ssh_opts, item_clone.clone(), to_path).await
             });
 
             handles.push(handle);
         }
 
-        for handle in handles.drain(..) {
+        for handle in handles {
             handle.await??;
+            pb.inc(1);
         }
 
         Ok(())
@@ -80,6 +85,7 @@ impl Connect {
     }
 }
 
+#[derive(Clone)]
 pub struct SshOpts {
     pub host: String,
     pub username: String,
@@ -87,10 +93,11 @@ pub struct SshOpts {
 }
 
 async fn copy_file_from_remote(
-    session: Session,
+    ssh_opts: &SshOpts,
     remote_file_path: PathBuf,
     local_file_path: PathBuf,
 ) -> anyhow::Result<()> {
+    let session = create_session(ssh_opts)?;
     // Create a SCP channel for receiving the file
     let (mut remote_file, stat) = session.scp_recv(&remote_file_path)?;
     let mut contents = Vec::with_capacity(stat.size() as usize);
@@ -102,6 +109,7 @@ async fn copy_file_from_remote(
     // Create local file and write to it
     let mut local_file = File::create(local_file_path)?;
     local_file.write_all(&contents)?;
+    session.disconnect(None, "Bye", None)?;
 
     Ok(())
 }
