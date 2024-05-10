@@ -1,4 +1,3 @@
-use anyhow::Ok;
 use indicatif::ProgressBar;
 use ssh2::Session;
 use std::{
@@ -21,6 +20,7 @@ impl Connect {
     }
 
     pub async fn receive(&self, from: &PathBuf, to: &PathBuf) -> anyhow::Result<()> {
+        let start = std::time::Instant::now();
         let files = self.list(from)?;
 
         let pb = ProgressBar::new(files.len() as u64);
@@ -41,6 +41,9 @@ impl Connect {
             handle.await??;
             pb.inc(1);
         }
+
+        let end = std::time::Instant::now();
+        println!("Done in {:?}.2", end - start);
 
         Ok(())
     }
@@ -97,7 +100,9 @@ async fn copy_file_from_remote(
     remote_file_path: PathBuf,
     local_file_path: PathBuf,
 ) -> anyhow::Result<()> {
-    let session = create_session(ssh_opts)?;
+    let create_session = || create_session(ssh_opts);
+    let session = with_retry(create_session, 10)?;
+
     // Create a SCP channel for receiving the file
     let (mut remote_file, stat) = session.scp_recv(&remote_file_path)?;
     let mut contents = Vec::with_capacity(stat.size() as usize);
@@ -125,4 +130,23 @@ pub fn create_session(ssh_opts: &SshOpts) -> anyhow::Result<Session> {
     session.userauth_pubkey_file(&ssh_opts.username, None, &ssh_opts.private_key, None)?;
 
     Ok(session)
+}
+
+fn with_retry<T, F>(f: F, max_retries: u32) -> anyhow::Result<T>
+where
+    F: Fn() -> anyhow::Result<T>,
+{
+    let mut retries = 0;
+    loop {
+        match f() {
+            Ok(x) => return Ok(x),
+            Err(e) => {
+                if retries >= max_retries {
+                    return Err(e);
+                }
+
+                retries += 1;
+            }
+        }
+    }
 }

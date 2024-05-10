@@ -1,6 +1,9 @@
 use scp_rs::run::run;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    run().await
+async fn main() {
+    match run().await {
+        Ok(_) => (),
+        Err(e) => eprintln!("Error: {}", e),
+    }
 }
