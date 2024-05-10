@@ -1,58 +1,60 @@
 use anyhow::Ok;
-use ssh2::Session;
+use ssh2::{FileStat, Session, Sftp};
 use std::{
     fs::{self, File},
     io::{Read, Write},
     net::TcpStream,
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
-pub struct Receiver {
-    /// Destination directory
-    dest: PathBuf,
-    session: Session,
+pub struct Connect {
+    sftp: Sftp,
 }
 
-impl Receiver {
+impl Connect {
     pub fn new(ssh_opts: SshOpts) -> anyhow::Result<Self> {
-        Ok(Self {
-            dest: PathBuf::from("."),
-            session: create_session(&ssh_opts)?,
-        })
+        let session = create_session(&ssh_opts)?;
+        let sftp = session.sftp()?;
+
+        Ok(Self { sftp })
     }
 
-    pub fn dir(mut self, dir: PathBuf) -> Self {
-        self.dest = dir;
-        self
+    pub fn receive(&self, from: &PathBuf, to: &PathBuf) -> anyhow::Result<()> {
+        let items = self.recursive_list(&from)?;
+
+        println!("Items: {:?}", items);
+        Ok(())
+
+        // if self.is_dir(from)? {
+        //     let dirs = self.get_dir_paths_remote(from);
+        //     for dir in dirs? {
+        //         self.receive(&dir, &to.join(dir.file_name().unwrap()))?;
+        //     }
+        //     Ok(())
+        // } else {
+        //     copy_file_from_vps(&self.session, from, &to.join(from.file_name().unwrap()))
+        // }
     }
 
-    pub fn receive(&self, path: &PathBuf) -> anyhow::Result<()> {
-        if self.is_dir(path)? {
-            self.handle_dir(path)
-        } else {
-            copy_file_from_vps(
-                &self.session,
-                path,
-                &self.dest.join(path.file_name().unwrap()),
-            )
+    fn list(&self, dir: &PathBuf) -> anyhow::Result<Vec<(PathBuf, FileStat)>> {
+        let dirs = self.sftp.readdir(dir)?;
+        Ok(dirs)
+    }
+
+    fn recursive_list(&self, path: &PathBuf) -> anyhow::Result<Vec<PathBuf>> {
+        let dir = self.list(&path)?;
+
+        let mut results: Vec<PathBuf> = Vec::new();
+        for (entry, stat) in dir {
+            if stat.is_dir() {
+                let items = self.recursive_list(&entry)?;
+                results.extend(items);
+            } else {
+                results.push(entry);
+            }
         }
-    }
 
-    fn handle_dir(&self, dir: &PathBuf) -> anyhow::Result<()> {
-        let dirs = list_dir(&self.session, &dir);
-
-        for item in dirs.iter() {
-            println!("File: {:?}", item);
-        }
-
-        unimplemented!("Handle dir")
-    }
-
-    fn is_dir(&self, path: &PathBuf) -> anyhow::Result<bool> {
-        let sftp = self.session.sftp().unwrap();
-        let metadata = sftp.stat(path)?;
-
-        Ok(metadata.is_dir())
+        Ok(results)
     }
 }
 
@@ -62,7 +64,7 @@ pub struct SshOpts {
     pub private_key: PathBuf,
 }
 
-fn copy_file_from_vps(
+fn copy_file_from_remote(
     session: &Session,
     remote_file_path: &PathBuf,
     local_file_path: &PathBuf,
@@ -80,13 +82,6 @@ fn copy_file_from_vps(
     local_file.write_all(&contents)?;
 
     Ok(())
-}
-
-fn list_dir(session: &Session, dir: &Path) -> anyhow::Result<Vec<PathBuf>> {
-    let sftp = session.sftp()?;
-    let dir = sftp.readdir(dir)?;
-    let dirs = dir.into_iter().map(|entry| entry.0).collect();
-    Ok(dirs)
 }
 
 pub fn create_session(ssh_opts: &SshOpts) -> anyhow::Result<Session> {

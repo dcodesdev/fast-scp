@@ -1,5 +1,5 @@
 use crate::cli::{Cli, Commands};
-use crate::scp::{Receiver, SshOpts};
+use crate::scp::{Connect, SshOpts};
 use clap::Parser;
 use dirs_next::home_dir;
 use std::path::PathBuf;
@@ -31,9 +31,8 @@ pub async fn run() -> anyhow::Result<()> {
                 username,
             };
 
-            return Receiver::new(scp_opts)?
-                .dir(PathBuf::from(destination))
-                .receive(&PathBuf::from(source));
+            return Connect::new(scp_opts)?
+                .receive(&PathBuf::from(source), &PathBuf::from(destination));
         }
     }
 }
