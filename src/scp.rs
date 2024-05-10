@@ -30,8 +30,11 @@ impl Connect {
             let to_path = to.join(item.strip_prefix(from).unwrap());
             let item_clone = item.clone();
             let ssh_opts = self.ssh_opts.clone();
+            let pb = pb.clone();
             let handle = tokio::task::spawn(async move {
-                copy_file_from_remote(&ssh_opts, item_clone.clone(), to_path).await
+                let result = copy_file_from_remote(&ssh_opts, item_clone.clone(), to_path).await;
+                pb.inc(1);
+                result
             });
 
             handles.push(handle);
@@ -39,7 +42,6 @@ impl Connect {
 
         for handle in handles {
             handle.await??;
-            pb.inc(1);
         }
 
         println!("Done in {:.2?}", start.elapsed());
