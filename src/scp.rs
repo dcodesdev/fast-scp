@@ -1,5 +1,5 @@
 use anyhow::Ok;
-use ssh2::{FileStat, Session, Sftp};
+use ssh2::Session;
 use std::{
     fs::{self, File},
     io::{Read, Write},
@@ -8,72 +8,75 @@ use std::{
 };
 
 pub struct Connect {
-    sftp: Sftp,
     session: Session,
 }
 
 impl Connect {
     pub fn new(ssh_opts: SshOpts) -> anyhow::Result<Self> {
         let session = create_session(&ssh_opts)?;
-        let sftp = session.sftp()?;
 
-        Ok(Self { sftp, session })
+        Ok(Self { session })
     }
 
     pub async fn receive(&self, from: &PathBuf, to: &PathBuf) -> anyhow::Result<()> {
-        let start = std::time::Instant::now();
-        let is_dir = self.sftp.stat(from)?.is_dir();
-        let end = start.elapsed();
-        println!("Time to stat: {:?}", end);
+        let files = self.list(from)?;
 
-        if is_dir {
-            let start = std::time::Instant::now();
-            let items = self.recursive_list(from)?;
-            let end = start.elapsed();
-            println!("Time to list: {:?}", end);
+        let mut handles = Vec::new();
+        for item in files {
+            let to_path = to.join(item.strip_prefix(from).unwrap());
+            let session_clone = self.session.clone();
+            let item_clone = item.clone();
+            let handle = tokio::task::spawn(async move {
+                copy_file_from_remote(session_clone, item_clone.clone(), to_path).await
+            });
 
-            let mut handles = Vec::new();
-            for item in items.iter() {
-                let to_path = to.join(item.strip_prefix(from).unwrap());
-                let session_clone = self.session.clone();
-                let item_clone = item.clone();
-                let handle = tokio::task::spawn(async move {
-                    copy_file_from_remote(&session_clone, &item_clone, &to_path)
-                });
+            handles.push(handle);
+        }
 
-                handles.push(handle);
-            }
-
-            for handle in handles {
-                handle.await??;
-            }
-        } else {
-            let to_path = to.join(from.file_name().unwrap());
-            copy_file_from_remote(&self.session, from, &to_path)?;
+        for handle in handles.drain(..) {
+            handle.await??;
         }
 
         Ok(())
     }
 
-    fn list(&self, dir: &PathBuf) -> anyhow::Result<Vec<(PathBuf, FileStat)>> {
-        let dirs = self.sftp.readdir(dir)?;
-        Ok(dirs)
-    }
+    fn list(&self, dir: &PathBuf) -> anyhow::Result<Vec<PathBuf>> {
+        let mut channel = self.session.channel_session()?;
 
-    fn recursive_list(&self, path: &PathBuf) -> anyhow::Result<Vec<PathBuf>> {
-        let dir = self.list(&path)?;
+        channel.exec(&format!("ls -R {}", dir.display()))?;
 
-        let mut results: Vec<PathBuf> = Vec::new();
-        for (entry, stat) in dir {
-            if stat.is_dir() {
-                let items = self.recursive_list(&entry)?;
-                results.extend(items);
-            } else {
-                results.push(entry);
-            }
-        }
+        let mut buf = String::new();
+        channel.read_to_string(&mut buf)?;
 
-        Ok(results)
+        let mut dirs: Vec<PathBuf> = Vec::new();
+        let structured = buf
+            .split("\n\n")
+            .map(|x| {
+                let mut lines = x.lines();
+                let dir: PathBuf = lines.next().unwrap().split(":").next().unwrap().into();
+
+                let files = lines.collect::<Vec<_>>();
+
+                let full_path = files
+                    .iter()
+                    .map(|x| PathBuf::new().join(x))
+                    .map(|x| dir.join(x))
+                    .collect::<Vec<_>>();
+
+                dirs.push(dir);
+                full_path
+            })
+            .collect::<Vec<_>>();
+
+        let flattened = structured.iter().flatten().collect::<Vec<_>>();
+
+        let files_only = flattened
+            .iter()
+            .filter(|x| !dirs.contains(x))
+            .map(|x| x.to_path_buf())
+            .collect::<Vec<_>>();
+
+        Ok(files_only)
     }
 }
 
@@ -83,10 +86,10 @@ pub struct SshOpts {
     pub private_key: PathBuf,
 }
 
-fn copy_file_from_remote(
-    session: &Session,
-    remote_file_path: &PathBuf,
-    local_file_path: &PathBuf,
+async fn copy_file_from_remote(
+    session: Session,
+    remote_file_path: PathBuf,
+    local_file_path: PathBuf,
 ) -> anyhow::Result<()> {
     // Create a SCP channel for receiving the file
     let (mut remote_file, stat) = session.scp_recv(&remote_file_path)?;
