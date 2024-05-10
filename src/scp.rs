@@ -42,8 +42,7 @@ impl Connect {
             pb.inc(1);
         }
 
-        let end = std::time::Instant::now();
-        println!("Done in {:?}.2", end - start);
+        println!("Done in {:.2?}", start.elapsed());
 
         Ok(())
     }
