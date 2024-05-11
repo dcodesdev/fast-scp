@@ -1,4 +1,4 @@
-# scp-rs
+# Fast SCP
 
 A Rust CLI tool to copy files from your linux remote server to your local machine. Each file is ran on a separate thread, which makes it much faster than the traditional `scp` command.
 
