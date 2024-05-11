@@ -9,3 +9,7 @@ A Rust CLI tool to copy files from remote server to local machine or the other w
 ```bash
 fast-scp receive <remote-path> <local-path> --host <host> --user <username> --private-key [path-to-private-key]
 ```
+
+## License
+
+Licensed under MIT License. See [LICENSE](LICENSE) for more information.
