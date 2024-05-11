@@ -1,4 +1,4 @@
-use scp_rs::run::run;
+use fast_scp::run::run;
 
 #[tokio::main]
 async fn main() {
