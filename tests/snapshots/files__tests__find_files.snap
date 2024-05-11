@@ -1,0 +1,25 @@
+---
+source: tests/files.rs
+assertion_line: 18
+expression: files_only
+---
+[
+    "project/README.md",
+    "project/package.json",
+    "project/src/app/App.tsx",
+    "project/src/app/index.ts",
+    "project/src/components/Header.tsx",
+    "project/src/components/Footer.tsx",
+    "project/src/components/Sidebar.tsx",
+    "project/src/components/index.ts",
+    "project/src/hooks/useAuth.ts",
+    "project/src/hooks/useFetch.ts",
+    "project/src/hooks/index.ts",
+    "project/src/utils/helpers.ts",
+    "project/src/utils/constants.ts",
+    "project/src/utils/index.ts",
+    "project/tests/App.test.tsx",
+    "project/tests/Header.test.tsx",
+    "project/tests/Footer.test.tsx",
+    "project/tests/Sidebar.test.tsx",
+]

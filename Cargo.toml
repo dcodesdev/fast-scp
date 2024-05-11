@@ -1,10 +1,14 @@
 [package]
-name = "scp-cli"
-version = "0.1.0"
+name = "fast-scp"
+version = "0.1.0-beta.1"
 edition = "2021"
 
 [dependencies]
 ssh2 = "0.9.4"
 tokio = { version = "1.37.0", features = ["full"] }
 anyhow = "1.0.83"
-dotenvy = "0.15.7"
+clap = { version = "4.5.4", features = ["derive"] }
+dirs-next = "2.0.0"
+indicatif = "0.17.8"
+futures = "0.3.30"
+insta = "1.38.0"
