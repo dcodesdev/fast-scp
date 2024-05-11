@@ -13,13 +13,18 @@ use crate::{error::ScpError, utils::with_retry};
 pub struct Connect {
     session: Session,
     ssh_opts: SshOpts,
+    mode: Mode,
 }
 
 impl Connect {
-    pub fn new(ssh_opts: SshOpts) -> anyhow::Result<Self, ScpError> {
+    pub fn new(ssh_opts: SshOpts, mode: Mode) -> anyhow::Result<Self, ScpError> {
         let session = create_session(&ssh_opts)?;
 
-        Ok(Self { session, ssh_opts })
+        Ok(Self {
+            session,
+            ssh_opts,
+            mode,
+        })
     }
 
     pub async fn receive(&self, from: &PathBuf, to: &PathBuf) -> anyhow::Result<(), ScpError> {
@@ -34,8 +39,10 @@ impl Connect {
             let item_clone = item.clone();
             let ssh_opts = self.ssh_opts.clone();
             let pb = pb.clone();
+            let mode = self.mode.clone();
             let handle = tokio::task::spawn(async move {
-                let result = copy_file_from_remote(&ssh_opts, item_clone.clone(), to_path).await;
+                let result =
+                    copy_file_from_remote(&ssh_opts, item_clone.clone(), to_path, &mode).await;
                 pb.inc(1);
                 result
             });
@@ -110,10 +117,20 @@ pub struct SshOpts {
     pub private_key: PathBuf,
 }
 
+/// Mode to use when copying files
+/// Replace will overwrite the file if it exists
+/// Ignore will skip the file if it exists
+#[derive(Clone)]
+pub enum Mode {
+    Replace,
+    Ignore,
+}
+
 async fn copy_file_from_remote(
     ssh_opts: &SshOpts,
     remote_file_path: PathBuf,
     local_file_path: PathBuf,
+    mode: &Mode,
 ) -> anyhow::Result<(), ScpError> {
     let create_session = || create_session(ssh_opts);
     let session = with_retry(create_session, 10)?;
@@ -126,9 +143,21 @@ async fn copy_file_from_remote(
     // make the dir if not exists
     fs::create_dir_all(local_file_path.parent().unwrap())?;
 
-    // Create local file and write to it
-    let mut local_file = File::create(local_file_path)?;
-    local_file.write_all(&contents)?;
+    match mode {
+        Mode::Replace => {
+            let mut local_file = File::create(&local_file_path)?;
+            local_file.write_all(&contents)?;
+        }
+        Mode::Ignore => {
+            if local_file_path.exists() {
+                return Ok(());
+            }
+
+            let mut local_file = File::create(local_file_path)?;
+            local_file.write_all(&contents)?;
+        }
+    }
+
     session.disconnect(None, "Bye", None)?;
 
     Ok(())

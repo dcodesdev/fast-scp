@@ -12,19 +12,22 @@ pub struct Cli {
 pub enum Commands {
     #[command(about = "Copy a file to a remote host")]
     Receive {
-        #[arg(help = "Remote source to copy from")]
+        #[clap(help = "Remote source to copy from")]
         source: String,
 
-        #[arg(help = "Local destination to copy to")]
+        #[clap(help = "Local destination to copy to")]
         destination: String,
 
-        #[arg(long, help = "Remote host to connect to")]
+        #[clap(long, help = "Remote host to connect to")]
         host: String,
 
-        #[arg(short, long, help = "Remote username to connect as")]
+        #[clap(short, long, help = "Remote username to connect as")]
         user: String,
 
-        #[arg(short, long, help = "Path to private key")]
+        #[clap(short, long, help = "Path to private key")]
         private_key: Option<PathBuf>,
+
+        #[clap(help = "Replace the file if it exists", long, default_value = "false")]
+        replace: bool,
     },
 }

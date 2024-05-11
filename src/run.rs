@@ -1,6 +1,6 @@
 use crate::cli::{Cli, Commands};
 use crate::error::ScpError;
-use crate::scp::{Connect, SshOpts};
+use crate::scp::{Connect, Mode, SshOpts};
 use crate::utils::get_private_key_path;
 use clap::Parser;
 use std::path::PathBuf;
@@ -15,6 +15,7 @@ pub async fn run() -> anyhow::Result<(), ScpError> {
             host,
             user: username,
             private_key,
+            replace,
         } => {
             let private_key = get_private_key_path(&private_key)?;
 
@@ -24,7 +25,9 @@ pub async fn run() -> anyhow::Result<(), ScpError> {
                 username,
             };
 
-            return Connect::new(scp_opts)?
+            let mode = if replace { Mode::Replace } else { Mode::Ignore };
+
+            return Connect::new(scp_opts, mode)?
                 .receive(&PathBuf::from(source), &PathBuf::from(destination))
                 .await;
         }
