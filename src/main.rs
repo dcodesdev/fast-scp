@@ -4,6 +4,9 @@ use fast_scp::run::run;
 async fn main() {
     match run().await {
         Ok(_) => (),
-        Err(e) => eprintln!("Error: {}", e),
+        Err(e) => {
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }
     }
 }

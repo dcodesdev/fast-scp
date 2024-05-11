@@ -10,7 +10,10 @@ use std::{
     time::Duration,
 };
 
-use crate::{error::Result, utils::with_retry};
+use crate::{
+    error::{Result, ScpError},
+    utils::with_retry,
+};
 
 pub struct Connect {
     session: Session,
@@ -21,6 +24,10 @@ pub struct Connect {
 
 impl Connect {
     pub fn new(ssh_opts: SshOpts, mode: Mode) -> Result<Self> {
+        if !ssh_opts.private_key.exists() {
+            return Err(ScpError::Other("Private key not found".to_string()));
+        }
+
         let session = create_session(&ssh_opts)?;
         let sftp = session.sftp()?;
 

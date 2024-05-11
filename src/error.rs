@@ -12,7 +12,7 @@ impl Display for ScpError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             ScpError::Io(e) => write!(f, "IO error: {}", e),
-            ScpError::Ssh(e) => write!(f, "SSH error: {}", e),
+            ScpError::Ssh(e) => write!(f, "SSH error: {}", e.message()),
             ScpError::Other(e) => write!(f, "Error: {}", e),
         }
     }
