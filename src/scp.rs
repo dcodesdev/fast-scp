@@ -24,8 +24,8 @@ impl Connect {
 
     pub async fn receive(&self, from: &PathBuf, to: &PathBuf) -> anyhow::Result<(), ScpError> {
         let start = std::time::Instant::now();
-        let files = self.list(from)?;
 
+        let files = self.list(from)?;
         let pb = ProgressBar::new(files.len() as u64);
 
         let mut handles = Vec::new();
@@ -71,7 +71,7 @@ impl Connect {
     }
 }
 
-fn find_files(buf: &str) -> Vec<PathBuf> {
+pub fn find_files(buf: &str) -> Vec<PathBuf> {
     let mut dirs: Vec<PathBuf> = Vec::new();
     let structured = buf
         .split("\n\n")
