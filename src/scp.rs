@@ -1,11 +1,12 @@
 use futures::future::join_all;
-use indicatif::ProgressBar;
+use indicatif::{ProgressBar, ProgressStyle};
 use ssh2::Session;
 use std::{
     fs::{self, File},
     io::{Read, Write},
     net::TcpStream,
     path::PathBuf,
+    time::Duration,
 };
 
 use crate::{error::ScpError, utils::with_retry};
@@ -32,6 +33,14 @@ impl Connect {
 
         let files = self.list(from)?;
         let pb = ProgressBar::new(files.len() as u64);
+        pb.set_style(
+            ProgressStyle::with_template(
+                "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})",
+            )
+            .unwrap()
+            .progress_chars("#>-"),
+        );
+        pb.enable_steady_tick(Duration::from_millis(100));
 
         let mut handles = Vec::new();
         for item in files {
@@ -53,7 +62,7 @@ impl Connect {
         let items = join_all(handles).await;
 
         if items.iter().all(|x| x.is_ok()) {
-            println!("Done in {:.2?}", start.elapsed());
+            println!("\nDone in {:.2?}", start.elapsed());
             Ok(())
         } else {
             Err(std::io::Error::new(
