@@ -44,7 +44,11 @@ impl Connect {
 
     async fn handle_file(&self, from: &PathBuf, to: &PathBuf) -> Result<()> {
         let full_path = to.join(from.file_name().unwrap_or(OsStr::new("unknown")));
-        copy_file_from_remote(&self.ssh_opts, from.clone(), full_path, &self.mode).await
+        let result =
+            copy_file_from_remote(&self.ssh_opts, from.clone(), full_path, &self.mode).await;
+
+        println!("✅ File received successfully");
+        result
     }
 
     async fn handle_dir(&self, from: &PathBuf, to: &PathBuf) -> Result<()> {
