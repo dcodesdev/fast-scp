@@ -18,7 +18,7 @@ fast-scp receive <remote-path> <local-path> --host <host> --user <username> --pr
 
 ## Commands
 
-### Receive
+### - Receive
 
 The command to receive files from the linux remote server ot the local machine.
 
