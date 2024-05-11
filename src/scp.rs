@@ -150,6 +150,10 @@ async fn copy_file_from_remote(
         }
         Mode::Ignore => {
             if local_file_path.exists() {
+                println!(
+                    "Skipping already existing file: {}",
+                    local_file_path.display()
+                );
                 return Ok(());
             }
 
