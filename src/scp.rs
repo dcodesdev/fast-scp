@@ -65,36 +65,42 @@ impl Connect {
         let mut buf = String::new();
         channel.read_to_string(&mut buf)?;
 
-        let mut dirs: Vec<PathBuf> = Vec::new();
-        let structured = buf
-            .split("\n\n")
-            .map(|x| {
-                let mut lines = x.lines();
-                let dir: PathBuf = lines.next().unwrap().split(":").next().unwrap().into();
-
-                let files = lines.collect::<Vec<_>>();
-
-                let full_path = files
-                    .iter()
-                    .map(|x| PathBuf::new().join(x))
-                    .map(|x| dir.join(x))
-                    .collect::<Vec<_>>();
-
-                dirs.push(dir);
-                full_path
-            })
-            .collect::<Vec<_>>();
-
-        let flattened = structured.iter().flatten().collect::<Vec<_>>();
-
-        let files_only = flattened
-            .iter()
-            .filter(|x| !dirs.contains(x))
-            .map(|x| x.to_path_buf())
-            .collect::<Vec<_>>();
+        let files_only = find_files(&buf);
 
         Ok(files_only)
     }
+}
+
+fn find_files(buf: &str) -> Vec<PathBuf> {
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    let structured = buf
+        .split("\n\n")
+        .map(|x| {
+            let mut lines = x.lines();
+            let dir: PathBuf = lines.next().unwrap().split(":").next().unwrap().into();
+
+            let files = lines.collect::<Vec<_>>();
+
+            let full_path = files
+                .iter()
+                .map(|x| PathBuf::new().join(x))
+                .map(|x| dir.join(x))
+                .collect::<Vec<_>>();
+
+            dirs.push(dir);
+            full_path
+        })
+        .collect::<Vec<_>>();
+
+    let flattened = structured.iter().flatten().collect::<Vec<_>>();
+
+    let files_only = flattened
+        .iter()
+        .filter(|x| !dirs.contains(x))
+        .map(|x| x.to_path_buf())
+        .collect::<Vec<_>>();
+
+    files_only
 }
 
 #[derive(Clone)]
