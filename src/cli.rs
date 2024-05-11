@@ -11,10 +11,10 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Commands {
     Receive {
-        #[arg(long, help = "Remote source to copy from")]
+        #[arg(help = "Remote source to copy from")]
         source: String,
 
-        #[arg(long, help = "Local destination to copy to")]
+        #[arg(help = "Local destination to copy to")]
         destination: String,
 
         #[arg(long, help = "Remote host to connect to")]
