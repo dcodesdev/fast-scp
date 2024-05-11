@@ -8,7 +8,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::utils::with_retry;
+use crate::{error::ScpError, utils::with_retry};
 
 pub struct Connect {
     session: Session,
@@ -22,7 +22,7 @@ impl Connect {
         Ok(Self { session, ssh_opts })
     }
 
-    pub async fn receive(&self, from: &PathBuf, to: &PathBuf) -> anyhow::Result<()> {
+    pub async fn receive(&self, from: &PathBuf, to: &PathBuf) -> anyhow::Result<(), ScpError> {
         let start = std::time::Instant::now();
         let files = self.list(from)?;
 
@@ -49,11 +49,15 @@ impl Connect {
             println!("Done in {:.2?}", start.elapsed());
             Ok(())
         } else {
-            Err(anyhow::anyhow!("One or more files failed to copy"))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "One or more files failed to copy",
+            )
+            .into())
         }
     }
 
-    fn list(&self, dir: &PathBuf) -> anyhow::Result<Vec<PathBuf>> {
+    fn list(&self, dir: &PathBuf) -> anyhow::Result<Vec<PathBuf>, ScpError> {
         let mut channel = self.session.channel_session()?;
 
         channel.exec(&format!("ls -R {}", dir.display()))?;
