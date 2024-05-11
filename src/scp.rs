@@ -29,13 +29,11 @@ impl Connect {
     }
 
     pub async fn receive(&self, from: &PathBuf, to: &PathBuf) -> anyhow::Result<(), ScpError> {
-        let start = std::time::Instant::now();
-
         let files = self.list(from)?;
         let pb = ProgressBar::new(files.len() as u64);
         pb.set_style(
             ProgressStyle::with_template(
-                "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})",
+                "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})\n\n{msg}",
             )
             .unwrap()
             .progress_chars("#>-"),
@@ -43,7 +41,7 @@ impl Connect {
         pb.enable_steady_tick(Duration::from_millis(100));
 
         let mut handles = Vec::new();
-        for item in files {
+        for item in &files {
             let to_path = to.join(item.strip_prefix(from).unwrap());
             let item_clone = item.clone();
             let ssh_opts = self.ssh_opts.clone();
@@ -62,7 +60,10 @@ impl Connect {
         let items = join_all(handles).await;
 
         if items.iter().all(|x| x.is_ok()) {
-            println!("\nDone in {:.2?}", start.elapsed());
+            pb.finish_with_message(format!(
+                "✅ All files received successfully ({} files)",
+                files.len()
+            ));
             Ok(())
         } else {
             Err(std::io::Error::new(
