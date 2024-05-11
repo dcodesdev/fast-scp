@@ -10,6 +10,7 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    #[command(about = "Copy a file to a remote host")]
     Receive {
         #[arg(help = "Remote source to copy from")]
         source: String,
