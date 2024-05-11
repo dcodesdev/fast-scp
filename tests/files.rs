@@ -7,8 +7,8 @@ fn open_file() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fast_scp::scp::*;
     use insta;
-    use scp_rs::scp::*;
 
     #[test]
     fn test_find_files() {
