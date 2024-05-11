@@ -8,6 +8,8 @@ use std::{
     path::PathBuf,
 };
 
+use crate::utils::with_retry;
+
 pub struct Connect {
     session: Session,
     ssh_opts: SshOpts,
@@ -133,23 +135,4 @@ pub fn create_session(ssh_opts: &SshOpts) -> anyhow::Result<Session> {
     session.userauth_pubkey_file(&ssh_opts.username, None, &ssh_opts.private_key, None)?;
 
     Ok(session)
-}
-
-fn with_retry<T, F>(f: F, max_retries: u32) -> anyhow::Result<T>
-where
-    F: Fn() -> anyhow::Result<T>,
-{
-    let mut retries = 0;
-    loop {
-        match f() {
-            Ok(x) => return Ok(x),
-            Err(e) => {
-                if retries >= max_retries {
-                    return Err(e);
-                }
-
-                retries += 1;
-            }
-        }
-    }
 }
