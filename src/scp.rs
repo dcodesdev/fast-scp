@@ -1,7 +1,8 @@
 use futures::future::join_all;
 use indicatif::{ProgressBar, ProgressStyle};
-use ssh2::Session;
+use ssh2::{Session, Sftp};
 use std::{
+    ffi::OsStr,
     fs::{self, File},
     io::{Read, Write},
     net::TcpStream,
@@ -9,26 +10,44 @@ use std::{
     time::Duration,
 };
 
-use crate::{error::ScpError, utils::with_retry};
+use crate::{error::Result, utils::with_retry};
 
 pub struct Connect {
     session: Session,
     ssh_opts: SshOpts,
     mode: Mode,
+    sftp: Sftp,
 }
 
 impl Connect {
-    pub fn new(ssh_opts: SshOpts, mode: Mode) -> anyhow::Result<Self, ScpError> {
+    pub fn new(ssh_opts: SshOpts, mode: Mode) -> Result<Self> {
         let session = create_session(&ssh_opts)?;
+        let sftp = session.sftp()?;
 
         Ok(Self {
             session,
             ssh_opts,
             mode,
+            sftp,
         })
     }
 
-    pub async fn receive(&self, from: &PathBuf, to: &PathBuf) -> anyhow::Result<(), ScpError> {
+    pub async fn receive(&self, from: &PathBuf, to: &PathBuf) -> Result<()> {
+        let is_dir = self.stat(from)?;
+
+        if is_dir {
+            self.handle_dir(from, to).await
+        } else {
+            self.handle_file(from, to).await
+        }
+    }
+
+    async fn handle_file(&self, from: &PathBuf, to: &PathBuf) -> Result<()> {
+        let full_path = to.join(from.file_name().unwrap_or(OsStr::new("unknown")));
+        copy_file_from_remote(&self.ssh_opts, from.clone(), full_path, &self.mode).await
+    }
+
+    async fn handle_dir(&self, from: &PathBuf, to: &PathBuf) -> Result<()> {
         let files = self.list(from)?;
         let pb = ProgressBar::new(files.len() as u64);
         pb.set_style(
@@ -74,7 +93,12 @@ impl Connect {
         }
     }
 
-    fn list(&self, dir: &PathBuf) -> anyhow::Result<Vec<PathBuf>, ScpError> {
+    fn stat(&self, path: &PathBuf) -> Result<bool> {
+        let file = self.sftp.lstat(&path)?;
+        Ok(file.is_dir())
+    }
+
+    fn list(&self, dir: &PathBuf) -> Result<Vec<PathBuf>> {
         let mut channel = self.session.channel_session()?;
 
         channel.exec(&format!("ls -R {}", dir.display()))?;
@@ -141,7 +165,7 @@ async fn copy_file_from_remote(
     remote_file_path: PathBuf,
     local_file_path: PathBuf,
     mode: &Mode,
-) -> anyhow::Result<(), ScpError> {
+) -> Result<()> {
     let create_session = || create_session(ssh_opts);
     let session = with_retry(create_session, 10)?;
 
@@ -177,7 +201,7 @@ async fn copy_file_from_remote(
     Ok(())
 }
 
-pub fn create_session(ssh_opts: &SshOpts) -> anyhow::Result<Session, ScpError> {
+pub fn create_session(ssh_opts: &SshOpts) -> Result<Session> {
     // Connect to the host
     let tcp = TcpStream::connect(&ssh_opts.host)?;
     let mut session = Session::new()?;
