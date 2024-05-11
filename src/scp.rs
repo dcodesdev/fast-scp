@@ -48,7 +48,7 @@ impl Connect {
     }
 
     async fn handle_dir(&self, from: &PathBuf, to: &PathBuf) -> Result<()> {
-        let files = self.list(from)?;
+        let files = self.list_files(from)?;
         let pb = ProgressBar::new(files.len() as u64);
         pb.set_style(
             ProgressStyle::with_template(
@@ -94,14 +94,14 @@ impl Connect {
     }
 
     fn stat(&self, path: &PathBuf) -> Result<bool> {
-        let file = self.sftp.lstat(&path)?;
+        let file = self.sftp.stat(&path)?;
         Ok(file.is_dir())
     }
 
-    fn list(&self, dir: &PathBuf) -> Result<Vec<PathBuf>> {
+    fn list_files(&self, dir: &PathBuf) -> Result<Vec<PathBuf>> {
         let mut channel = self.session.channel_session()?;
 
-        channel.exec(&format!("ls -R {}", dir.display()))?;
+        channel.exec(&format!("find {} -type f", dir.display()))?;
 
         let mut buf = String::new();
         channel.read_to_string(&mut buf)?;
@@ -113,35 +113,7 @@ impl Connect {
 }
 
 pub fn find_files(buf: &str) -> Vec<PathBuf> {
-    let mut dirs: Vec<PathBuf> = Vec::new();
-    let structured = buf
-        .split("\n\n")
-        .map(|x| {
-            let mut lines = x.lines();
-            let dir: PathBuf = lines.next().unwrap().split(":").next().unwrap().into();
-
-            let files = lines.collect::<Vec<_>>();
-
-            let full_path = files
-                .iter()
-                .map(|x| PathBuf::new().join(x))
-                .map(|x| dir.join(x))
-                .collect::<Vec<_>>();
-
-            dirs.push(dir);
-            full_path
-        })
-        .collect::<Vec<_>>();
-
-    let flattened = structured.iter().flatten().collect::<Vec<_>>();
-
-    let files_only = flattened
-        .iter()
-        .filter(|x| !dirs.contains(x))
-        .map(|x| x.to_path_buf())
-        .collect::<Vec<_>>();
-
-    files_only
+    buf.lines().map(|line| PathBuf::from(line.trim())).collect()
 }
 
 #[derive(Clone)]
