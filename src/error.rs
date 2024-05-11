@@ -29,3 +29,5 @@ impl From<ssh2::Error> for ScpError {
         ScpError::Ssh(e)
     }
 }
+
+pub type Result<T = ()> = anyhow::Result<T, ScpError>;
