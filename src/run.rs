@@ -13,10 +13,10 @@ pub async fn run() -> anyhow::Result<(), ScpError> {
             source,
             destination,
             host,
-            username,
-            private_key_path,
+            user: username,
+            private_key,
         } => {
-            let private_key = match private_key_path {
+            let private_key = match private_key {
                 Some(path) => PathBuf::from(path),
                 None => home_dir()
                     .ok_or(

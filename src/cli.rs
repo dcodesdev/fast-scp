@@ -11,16 +11,19 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Commands {
     Receive {
+        #[arg(long, help = "Remote source to copy from")]
         source: String,
+
+        #[arg(long, help = "Local destination to copy to")]
         destination: String,
 
-        #[arg(long)]
+        #[arg(long, help = "Remote host to connect to")]
         host: String,
 
-        #[arg(short, long)]
-        username: String,
+        #[arg(short, long, help = "Remote username to connect as")]
+        user: String,
 
-        #[arg(short, long)]
-        private_key_path: Option<PathBuf>,
+        #[arg(short, long, help = "Path to private key")]
+        private_key: Option<PathBuf>,
     },
 }
