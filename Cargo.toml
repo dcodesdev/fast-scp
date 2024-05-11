@@ -1,5 +1,5 @@
 [package]
-name = "scp-rs"
+name = "fast-scp"
 version = "0.1.0-beta.1"
 edition = "2021"
 
