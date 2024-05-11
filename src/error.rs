@@ -1,7 +1,21 @@
+use core::fmt;
+use std::fmt::{Display, Formatter};
+
 #[derive(Debug)]
 pub enum ScpError {
     Io(std::io::Error),
     Ssh(ssh2::Error),
+    Other(String),
+}
+
+impl Display for ScpError {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            ScpError::Io(e) => write!(f, "IO error: {}", e),
+            ScpError::Ssh(e) => write!(f, "SSH error: {}", e),
+            ScpError::Other(e) => write!(f, "Error: {}", e),
+        }
+    }
 }
 
 impl From<std::io::Error> for ScpError {

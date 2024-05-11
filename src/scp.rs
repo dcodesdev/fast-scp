@@ -16,7 +16,7 @@ pub struct Connect {
 }
 
 impl Connect {
-    pub fn new(ssh_opts: SshOpts) -> anyhow::Result<Self> {
+    pub fn new(ssh_opts: SshOpts) -> anyhow::Result<Self, ScpError> {
         let session = create_session(&ssh_opts)?;
 
         Ok(Self { session, ssh_opts })
@@ -108,7 +108,7 @@ async fn copy_file_from_remote(
     ssh_opts: &SshOpts,
     remote_file_path: PathBuf,
     local_file_path: PathBuf,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<(), ScpError> {
     let create_session = || create_session(ssh_opts);
     let session = with_retry(create_session, 10)?;
 
@@ -128,7 +128,7 @@ async fn copy_file_from_remote(
     Ok(())
 }
 
-pub fn create_session(ssh_opts: &SshOpts) -> anyhow::Result<Session> {
+pub fn create_session(ssh_opts: &SshOpts) -> anyhow::Result<Session, ScpError> {
     // Connect to the host
     let tcp = TcpStream::connect(&ssh_opts.host)?;
     let mut session = Session::new()?;

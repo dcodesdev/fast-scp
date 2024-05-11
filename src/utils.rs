@@ -1,6 +1,8 @@
-pub fn with_retry<T, F>(f: F, max_retries: u32) -> anyhow::Result<T>
+use crate::error::ScpError;
+
+pub fn with_retry<T, F>(f: F, max_retries: u32) -> anyhow::Result<T, ScpError>
 where
-    F: Fn() -> anyhow::Result<T>,
+    F: Fn() -> anyhow::Result<T, ScpError>,
 {
     let mut retries = 0;
     loop {

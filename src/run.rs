@@ -1,10 +1,11 @@
 use crate::cli::{Cli, Commands};
+use crate::error::ScpError;
 use crate::scp::{Connect, SshOpts};
 use clap::Parser;
 use dirs_next::home_dir;
 use std::path::PathBuf;
 
-pub async fn run() -> anyhow::Result<()> {
+pub async fn run() -> anyhow::Result<(), ScpError> {
     let args = Cli::parse();
 
     match args.command {
@@ -18,10 +19,14 @@ pub async fn run() -> anyhow::Result<()> {
             let private_key = match private_key_path {
                 Some(path) => PathBuf::from(path),
                 None => home_dir()
-                    .ok_or(anyhow::anyhow!(
-                        "Could not find home directory, please provide 
-                        the private key path using the --private-key-path <key> flag"
-                    ))?
+                    .ok_or(
+                        ScpError::Io(
+                            std::io::Error::new(
+                                std::io::ErrorKind::Other,
+                                "Could not find home directory, please provide the private key path using the --private-key-path <key> flag",
+                            ),
+                        ),
+                    )?
                     .join(".ssh/id_rsa"),
             };
 
