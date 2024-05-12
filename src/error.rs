@@ -18,6 +18,12 @@ impl Display for ScpError {
     }
 }
 
+impl From<&str> for ScpError {
+    fn from(e: &str) -> Self {
+        ScpError::Other(e.to_string())
+    }
+}
+
 impl From<std::io::Error> for ScpError {
     fn from(e: std::io::Error) -> Self {
         ScpError::Io(e)
