@@ -5,6 +5,7 @@ use std::fmt::{Display, Formatter};
 pub enum ScpError {
     Io(std::io::Error),
     Ssh(ssh2::Error),
+    RemoteError(String),
     Other(String),
 }
 
@@ -13,6 +14,7 @@ impl Display for ScpError {
         match self {
             ScpError::Io(e) => write!(f, "IO error: {}", e),
             ScpError::Ssh(e) => write!(f, "SSH error: {}", e.message()),
+            ScpError::RemoteError(e) => write!(f, "Remote error: {}", e),
             ScpError::Other(e) => write!(f, "Error: {}", e),
         }
     }
