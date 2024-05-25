@@ -52,7 +52,27 @@ impl Connect {
     }
 
     async fn handle_dir(&self, from: &PathBuf, to: &PathBuf) -> Result<()> {
-        let files = self.list_files(from)?;
+        let mut files = self.list_files(from)?;
+
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        if self.mode != Mode::Replace {
+            let output = std::process::Command::new("find")
+                .arg(to)
+                .arg("-type")
+                .arg("f")
+                .output()?;
+
+            let existing_files = String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .map(|line| PathBuf::from(line))
+                .collect::<Vec<_>>();
+
+            files = files
+                .into_iter()
+                .filter(|file| !existing_files.contains(&to.join(file.strip_prefix(from).unwrap())))
+                .collect::<Vec<_>>();
+        }
+
         let pb = ProgressBar::new(files.len() as u64);
         pb.set_style(
             ProgressStyle::with_template(
@@ -70,7 +90,7 @@ impl Connect {
             let ssh_opts = self.ssh_opts.clone();
             let pb = pb.clone();
             let mode = self.mode.clone();
-            let handle = tokio::task::spawn(async move {
+            let handle = tokio::spawn(async move {
                 let result =
                     copy_file_from_remote(&ssh_opts, item_clone.clone(), to_path, &mode).await;
                 pb.inc(1);
@@ -130,7 +150,7 @@ pub struct SshOpts {
 /// Mode to use when copying files
 /// Replace will overwrite the file if it exists
 /// Ignore will skip the file if it exists
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Mode {
     Replace,
     Ignore,
