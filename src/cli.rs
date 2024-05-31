@@ -21,7 +21,12 @@ pub enum Commands {
         #[clap(long, help = "Remote host to connect to")]
         host: String,
 
-        #[clap(short, long, help = "Remote username to connect as")]
+        #[clap(
+            short,
+            long,
+            help = "Remote username to connect as",
+            default_value = "root"
+        )]
         user: String,
 
         #[clap(short, long, help = "Path to private key")]
