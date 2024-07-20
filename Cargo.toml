@@ -1,6 +1,6 @@
 [package]
 name = "fast-scp"
-version = "0.1.4"
+version = "0.1.5"
 description = "A fast and simple scp CLI tool"
 license = "MIT"
 repository = "https://github.com/dcodesdev/fast-scp"

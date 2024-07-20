@@ -1,16 +1,16 @@
-use clap::{command, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(version, about, long_about = None)]
+#[clap(version, about, long_about = None)]
 pub struct Cli {
-    #[command(subcommand)]
+    #[clap(subcommand)]
     pub command: Commands,
 }
 
 #[derive(Subcommand)]
 pub enum Commands {
-    #[command(about = "Copy a file to a remote host")]
+    #[clap(about = "Copy a file to a remote host", alias = "r")]
     Receive {
         #[clap(help = "Remote source to copy from")]
         source: String,
